@@ -9,9 +9,11 @@ private const val OUTPUT_COUNT = 2
 private const val BIAS = 1
 private const val ACTIVATION_RESPONSE = 1
 
+// Thread safe singleton for getting non deterministic data
 object NonDeterminism {
     private val rand = Random()
     fun nextRandomDouble() : Double = rand.nextDouble() * if (rand.nextBoolean()) 1 else -1
+    fun nextRandomInt(max: Int) : Int = rand.nextInt(max)
 }
 
 // A simple ANN
@@ -19,13 +21,35 @@ object NonDeterminism {
 class Network {
 
     // The networks layers
-    private val layers = Array(LAYER_COUNT, { index ->
-        when (index) {
-            0 -> { Layer(INPUT_COUNT, HIDDEN_NEURON_COUNT) }
-            LAYER_COUNT - 1 -> { Layer(HIDDEN_NEURON_COUNT, OUTPUT_COUNT) }
-            else -> { Layer(HIDDEN_NEURON_COUNT, HIDDEN_NEURON_COUNT) }
+    private val layers: Array<Layer>
+
+    // Default constructor initializes all layers with random weights
+    constructor() {
+        layers = Array(Learning.LAYER_COUNT, { index ->
+            when (index) {
+                0 -> { Layer(INPUT_COUNT, HIDDEN_NEURON_COUNT) }
+                LAYER_COUNT - 1 -> { Layer(HIDDEN_NEURON_COUNT, OUTPUT_COUNT) }
+                else -> { Layer(HIDDEN_NEURON_COUNT, HIDDEN_NEURON_COUNT) }
+            }
+        })
+    }
+
+    // Constructor to make a network with a specified, non-random set of weights
+    constructor(weights: Array<Double>) {
+        layers = Array(LAYER_COUNT, { index ->
+            when (index) {
+                0 -> { Layer(INPUT_COUNT, HIDDEN_NEURON_COUNT) }
+                LAYER_COUNT - 1 -> { Layer(HIDDEN_NEURON_COUNT, OUTPUT_COUNT) }
+                else -> { Layer(HIDDEN_NEURON_COUNT, HIDDEN_NEURON_COUNT) }
+            }
+        })
+
+        var currentIndex = 0
+        layers.forEach { layer ->
+            layer.weights = weights.sliceArray(IntRange(currentIndex, layer.inputSize))
+            currentIndex += layer.inputSize
         }
-    })
+    }
 
     // Run the network against the inputs and return the outputs
     fun update(inputs: Array<Double>) : Array<Double> {
@@ -36,11 +60,21 @@ class Network {
         return outputs
     }
 
-    // Represents a layer in the artificial neural network
-    private class Layer(inputSize: Int, private val outputSize: Int) {
+    // Gets the weights of all the layers as a single array
+    fun getAllWeights() : Array<Double> {
+        val weights = mutableListOf<Double>()
+        layers.forEach { layer ->
+            weights.addAll(layer.weights)
+        }
+        return weights.toTypedArray()
+    }
 
-        // Initialize the weights to random double values between -1.0 and 1.0
-        private val weights: Array<Double> = Array(inputSize + 1, { _ -> NonDeterminism.nextRandomDouble() })
+    // Represents a layer in the artificial neural network
+    private class Layer(val inputSize: Int,
+                        private val outputSize: Int,
+                        var weights: Array<Double> = Array(inputSize + 1, { _ ->
+                            NonDeterminism.nextRandomDouble()
+                        })) {
 
         // Activate the layer and return the set of outputs
         fun activate(inputs: Array<Double>) : Array<Double> {

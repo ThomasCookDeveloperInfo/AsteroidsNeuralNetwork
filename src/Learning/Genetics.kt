@@ -2,14 +2,13 @@ package Learning
 
 private const val CROSSOVER_RATE = 1
 private const val MUTATION_CHANCE = 0.01
-private const val POPULATION_SIZE = 10
 private const val MAX_PERTURBATION = 0.1
 
 // Functions for performing selection, crossover and mutation of a networks weights
-class Genetics {
+class Genetics(populationSize: Int) {
 
     // The population of network members to perform genetic selection on
-    val population = Array(POPULATION_SIZE, { _ -> NetworkPopulationMember() })
+    val population = Array(populationSize, { _ -> NetworkPopulationMember() })
 
     // Starts a new epoch
     fun epoch() {

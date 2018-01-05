@@ -1,49 +1,34 @@
 package Learning
 
-import java.util.*
+import Utilities.NonDeterminism
 
 private const val LAYER_COUNT = 3
 private const val HIDDEN_NEURON_COUNT = 6
-private const val INPUT_COUNT = 2
+private const val INPUT_COUNT = 4
 private const val OUTPUT_COUNT = 2
-private const val BIAS = 1
+private const val BIAS = 0
 private const val ACTIVATION_RESPONSE = 1
-
-// Thread safe singleton for getting non deterministic data
-object NonDeterminism {
-    private val rand = Random()
-    fun nextRandomDouble() : Double = rand.nextDouble() * if (rand.nextBoolean()) 1 else -1
-    fun nextRandomInt(max: Int) : Int = rand.nextInt(max)
-}
 
 // A simple ANN
 // No back prop as we'll train it with a GA
 class Network {
 
     // The networks layers
-    private val layers: Array<Layer>
+    private val layers = mutableListOf<Layer>()
 
     // Default constructor initializes all layers with random weights
     constructor() {
-        layers = Array(Learning.LAYER_COUNT, { index ->
-            when (index) {
-                0 -> { Layer(INPUT_COUNT, HIDDEN_NEURON_COUNT) }
-                LAYER_COUNT - 1 -> { Layer(HIDDEN_NEURON_COUNT, OUTPUT_COUNT) }
-                else -> { Layer(HIDDEN_NEURON_COUNT, HIDDEN_NEURON_COUNT) }
+        layers.clear()
+        for (layer in 0 until LAYER_COUNT) {
+            when (layer) {
+                0 -> { layers.add(Layer(INPUT_COUNT, HIDDEN_NEURON_COUNT)) }
+                LAYER_COUNT - 1 -> { layers.add(Layer(if(LAYER_COUNT == 2) { INPUT_COUNT } else { HIDDEN_NEURON_COUNT }, OUTPUT_COUNT)) }
+                else -> { layers.add(Layer(HIDDEN_NEURON_COUNT, HIDDEN_NEURON_COUNT)) }
             }
-        })
+        }
     }
 
-    // Constructor to make a network with a specified, non-random set of weights
-    constructor(weights: Array<Double>) {
-        layers = Array(LAYER_COUNT, { index ->
-            when (index) {
-                0 -> { Layer(INPUT_COUNT, HIDDEN_NEURON_COUNT) }
-                LAYER_COUNT - 1 -> { Layer(HIDDEN_NEURON_COUNT, OUTPUT_COUNT) }
-                else -> { Layer(HIDDEN_NEURON_COUNT, HIDDEN_NEURON_COUNT) }
-            }
-        })
-
+    fun setWeights(weights: Array<Double>) {
         var currentIndex = 0
         layers.forEach { layer ->
             layer.weights = weights.sliceArray(IntRange(currentIndex, layer.inputSize))
@@ -72,8 +57,8 @@ class Network {
     // Represents a layer in the artificial neural network
     private class Layer(val inputSize: Int,
                         private val outputSize: Int,
-                        var weights: Array<Double> = Array(inputSize + 1, { _ ->
-                            NonDeterminism.nextRandomDouble()
+                        var weights: Array<Double> = Array((inputSize * outputSize) + 1, { _ ->
+                            NonDeterminism.randomNetworkWeight()
                         })) {
 
         // Activate the layer and return the set of outputs
@@ -88,18 +73,16 @@ class Network {
             // Foreach output, work out the activation
             for (output in 0 until outputs.size) {
                 // Foreach input, multiply by the corresponding weight
+                var netInput = 0.0
                 for (input in 0 until inputs.size) {
-                    // Track the net input
-                    var netInput = (0 until weights.size).sumByDouble {
-                        weights[it] * inputs[input]
-                    }
-
-                    // Add the bias
-                    netInput += weights.last() * BIAS
-
-                    // Set the output
-                    outputs[output] = sigmoid(netInput)
+                    netInput += weights[input * output + 1]
                 }
+
+                // Add the bias
+                netInput += weights.last() * BIAS
+
+                // Set the output
+                outputs[output] = sigmoid(netInput)
             }
 
             return outputs

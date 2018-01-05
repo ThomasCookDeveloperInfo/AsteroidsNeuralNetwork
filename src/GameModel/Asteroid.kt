@@ -1,7 +1,9 @@
 package GameModel
 
 import GUI.HEIGHT
+import GUI.SQUARE_GRID_SIZE
 import GUI.WIDTH
+import Utilities.NonDeterminism
 import java.awt.Polygon
 
 const val ASTEROID_POINTS = 4
@@ -20,9 +22,9 @@ class Asteroid {
     private var vel = 0.0
 
     constructor() {
-        rot = Math.max(0.0, Math.min(360.0, Math.random() * 360.0))
-        vRot = Math.max(0.0, Math.min(2.5, Math.random() * 2.5))
-        vel = Math.max(0.0, Math.min(2.5, Math.random() * 2.5))
+        rot = Math.max(-360.0, Math.min(360.0, NonDeterminism.randomNetworkWeight() * 360.0))
+        vRot = Math.max(-2.5, Math.min(2.5, NonDeterminism.randomNetworkWeight() * 2.5))
+        vel = Math.max(-2.5, Math.min(2.5, NonDeterminism.randomNetworkWeight() * 2.5))
     }
 
     constructor(xPos: Double, yPos: Double) : this() {
@@ -30,11 +32,11 @@ class Asteroid {
         this.yPos = yPos
     }
 
-    fun collidesWith(x: Double, y: Double) : Boolean {
-        val roidRect = Polygon(getXPoints().map { it.toInt() }.toIntArray(),
-                getYPoints().map { it.toInt() }.toIntArray(), ASTEROID_POINTS)
+    fun collidesWith(x: Double, y: Double, xOrigin: Double, yOrigin: Double) : Boolean {
+        val roidRect = Polygon(getXPoints(SQUARE_GRID_SIZE, xOrigin).map { it.toInt() }.toIntArray(),
+                getYPoints(SQUARE_GRID_SIZE, yOrigin).map { it.toInt() }.toIntArray(), ASTEROID_POINTS)
 
-        return roidRect.contains(x, y)
+        return roidRect.contains(x / SQUARE_GRID_SIZE, y / SQUARE_GRID_SIZE)
     }
 
     fun update() {
@@ -47,22 +49,22 @@ class Asteroid {
         else if (yPos < 0) yPos = HEIGHT
     }
 
-    fun getXPoints() : DoubleArray {
+    fun getXPoints(scale: Int, xOrigin: Double) : DoubleArray {
         val xPoints = DoubleArray(ASTEROID_POINTS, { index -> 0.0 })
         for (i in 0 until ASTEROID_POINTS) {
-            val x = mesh[i].first / size
-            val y = mesh[i].second / size
-            xPoints[i] = xPos + (x * Math.cos(Math.toRadians(rot)) - y * Math.sin(Math.toRadians(rot))) + vel
+            val x = (mesh[i].first / size) / scale
+            val y = (mesh[i].second / size) / scale
+            xPoints[i] = (xPos / scale + (x * Math.cos(Math.toRadians(rot)) - y * Math.sin(Math.toRadians(rot))) + vel) + xOrigin
         }
         return xPoints
     }
 
-    fun getYPoints() : DoubleArray {
+    fun getYPoints(scale: Int, yOrigin: Double): DoubleArray {
         val yPoints = DoubleArray(ASTEROID_POINTS, { index -> 0.0 })
         for (i in 0 until ASTEROID_POINTS) {
-            val x = mesh[i].first / size
-            val y = mesh[i].second / size
-            yPoints[i] = yPos + (x * Math.sin(Math.toRadians(rot)) + y * Math.cos(Math.toRadians(rot))) + vel
+            val x = (mesh[i].first / size) / scale
+            val y = (mesh[i].second / size) / scale
+            yPoints[i] = (yPos / scale + (x * Math.sin(Math.toRadians(rot)) + y * Math.cos(Math.toRadians(rot))) + vel) + yOrigin
         }
         return yPoints
     }

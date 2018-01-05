@@ -68,22 +68,22 @@ class Ship : Bullet.Callbacks {
         }
     }
 
-    fun getXPoints() : DoubleArray {
+    fun getXPoints(scale: Int, xOrigin: Double) : DoubleArray {
         val xPoints = DoubleArray(SHIP_POINTS, { index -> 0.0 })
         for (i in 0 until SHIP_POINTS) {
-            val x = mesh[i].first
-            val y = mesh[i].second
-            xPoints[i] = xPos + (x * Math.cos(Math.toRadians(rot)) - y * Math.sin(Math.toRadians(rot)))
+            val x = mesh[i].first / scale
+            val y = mesh[i].second / scale
+            xPoints[i] = (xPos / scale + (x * Math.cos(Math.toRadians(rot)) - y * Math.sin(Math.toRadians(rot)))) + xOrigin
         }
         return xPoints
     }
 
-    fun getYPoints() : DoubleArray {
+    fun getYPoints(scale: Int, yOrigin: Double) : DoubleArray {
         val yPoints = DoubleArray(SHIP_POINTS, { index -> 0.0 })
         for (i in 0 until SHIP_POINTS) {
-            val x = mesh[i].first
-            val y = mesh[i].second
-            yPoints[i] = yPos + (x * Math.sin(Math.toRadians(rot)) + y * Math.cos(Math.toRadians(rot)))
+            val x = mesh[i].first / scale
+            val y = mesh[i].second / scale
+            yPoints[i] = (yPos / scale + (x * Math.sin(Math.toRadians(rot)) + y * Math.cos(Math.toRadians(rot)))) + yOrigin
         }
         return yPoints
     }
@@ -112,7 +112,7 @@ class Bullet(callbacks: Bullet.Callbacks, private val initialVelX: Double, priva
         this.rot = rot
     }
 
-    fun getPoints() : DoubleArray {
+    fun getPoints(scale: Int, xOrigin: Double, yOrigin: Double) : DoubleArray {
         xPos += initialVelX + BULLET_VEL * -Math.sin(Math.toRadians(rot))
         yPos += initialVelY + BULLET_VEL * Math.cos(Math.toRadians(rot))
 
@@ -121,7 +121,7 @@ class Bullet(callbacks: Bullet.Callbacks, private val initialVelX: Double, priva
         if (yPos > HEIGHT) yPos = 0.0
         else if (yPos < 0) yPos = HEIGHT
 
-        return doubleArrayOf(xPos, yPos)
+        return doubleArrayOf((xPos / scale) + xOrigin, (yPos / scale) + yOrigin)
     }
 
     interface Callbacks {

@@ -3,21 +3,25 @@ package GameModel
 import GUI.HEIGHT
 import GUI.WIDTH
 import Learning.NetworkPopulationMember
+import Utilities.NonDeterminism
 
 // Handles simulating a game of asteroids being played by the ai
 class Simulation(val networkPopulationMember: NetworkPopulationMember) {
 
     // The asteroids
     val asteroids = mutableListOf<Asteroid>()
-    init {
-        asteroids.addAll(listOf(Asteroid(Math.max(0.0, Math.min(WIDTH, Math.random() * WIDTH)),
-                Math.max(0.0, Math.min(HEIGHT, Math.random() * HEIGHT))), Asteroid(Math.max(0.0, Math.min(WIDTH, Math.random() * WIDTH)),
-                Math.max(0.0, Math.min(HEIGHT, Math.random() * HEIGHT))), Asteroid(Math.max(0.0, Math.min(WIDTH, Math.random() * WIDTH)),
-                Math.max(0.0, Math.min(HEIGHT, Math.random() * HEIGHT)))))
-    }
 
     // The ship
     val ship = Ship()
+
+    init {
+        asteroids.addAll(listOf(Asteroid(Math.max(0.0, Math.min(WIDTH, NonDeterminism.randomDouble() * WIDTH)),
+                Math.max(0.0, Math.min(HEIGHT, NonDeterminism.randomDouble() * HEIGHT))), Asteroid(Math.max(0.0, Math.min(WIDTH, NonDeterminism.randomDouble() * WIDTH)),
+                Math.max(0.0, Math.min(HEIGHT, NonDeterminism.randomDouble() * HEIGHT))), Asteroid(Math.max(0.0, Math.min(WIDTH, NonDeterminism.randomDouble() * WIDTH)),
+                Math.max(0.0, Math.min(HEIGHT, NonDeterminism.randomDouble() * HEIGHT)))))
+
+        ship.setPosition(WIDTH / 2, HEIGHT / 2)
+    }
 
     // Call to update the simulation
     // It will run the network and apply the network outputs to the ship
@@ -32,7 +36,8 @@ class Simulation(val networkPopulationMember: NetworkPopulationMember) {
         val networkOutputs = networkPopulationMember.network.update(vectorBetween)
 
         // Update the ship
-        ship.update(networkOutputs[0], networkOutputs[1], networkOutputs[2] > 0)
+        val turn = networkOutputs[0] - networkOutputs[1]
+        ship.update(if(turn < 0) -1.0 else 1.0, networkOutputs[0] + networkOutputs[1], true)
 
         // Update the asteroids
         asteroids.forEach {
@@ -58,8 +63,8 @@ class Simulation(val networkPopulationMember: NetworkPopulationMember) {
 
     // Returns the vector between the ship and the passed asteroid
     private fun vectorBetweenShipAndAsteroid(asteroid: Asteroid) : Array<Double> {
-        val dX = ship.xPos - asteroid.xPos
-        val dY = ship.yPos - asteroid.yPos
+        val dX = Math.abs(ship.xPos - asteroid.xPos)
+        val dY = Math.abs(ship.yPos - asteroid.yPos)
         return arrayOf(dX, dY)
     }
 }

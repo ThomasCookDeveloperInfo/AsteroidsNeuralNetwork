@@ -3,7 +3,7 @@ package Learning
 import Utilities.NonDeterminism
 
 private const val CROSSOVER_RATE = 1
-private const val MUTATION_CHANCE = 0.01
+private const val MUTATION_CHANCE = 0.025
 private const val MAX_PERTURBATION = 0.1
 
 // Functions for performing selection, crossover and mutation of a networks weights
@@ -15,6 +15,13 @@ class Genetics {
     // Creates a population member with the passed weights
     fun addPopulationMember(weights: DoubleArray) {
         population.add(NetworkPopulationMember(weights.toTypedArray()))
+    }
+
+    // Sets the population fitnesses to the passed set of doubles
+    fun setPopulationFitnesses(fitnesses: Collection<Double>) {
+        fitnesses.forEachIndexed { index, fitness ->
+            population.elementAt(index).fitness = fitness
+        }
     }
 
     // Starts a new epoch
@@ -85,7 +92,7 @@ class NetworkPopulationMember(val network: Network = Network()) {
     // Performs crossover with the passed member and returns a new member
     fun crossover(with: NetworkPopulationMember) : NetworkPopulationMember {
         // If the crossover rate is not met, or the parents are the same just return a copy of one of them
-        if (NonDeterminism.randomNetworkWeight() > CROSSOVER_RATE || this == with) {
+        if (NonDeterminism.randomDouble(2.0) > CROSSOVER_RATE || this == with) {
             return NetworkPopulationMember(this.network.getCopyOfWeights())
         }
 
@@ -102,8 +109,8 @@ class NetworkPopulationMember(val network: Network = Network()) {
         childWeights.addAll(dadWeights.sliceArray(IntRange(crossoverPoint, mumWeights.size - 1)))
 
         for (index in 0 until childWeights.size) {
-            if (NonDeterminism.randomNetworkWeight() < MUTATION_CHANCE) {
-                childWeights[index] += (NonDeterminism.randomNetworkWeight() - NonDeterminism.randomNetworkWeight()) * MAX_PERTURBATION
+            if (NonDeterminism.randomDouble() < MUTATION_CHANCE) {
+                childWeights[index] += NonDeterminism.randomNetworkWeight() * MAX_PERTURBATION
             }
         }
 

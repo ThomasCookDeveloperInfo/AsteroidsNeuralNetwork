@@ -9,7 +9,7 @@ import javafx.scene.canvas.Canvas
 import javafx.scene.layout.AnchorPane
 
 private const val SIMULATIONS_TO_RUN = 100
-private const val COLUMNS = 1
+private const val COLUMNS = 3
 
 // The controller for all the simulations
 class SimulationController(@FXML private var mainPane: AnchorPane? = null,
@@ -25,6 +25,9 @@ class SimulationController(@FXML private var mainPane: AnchorPane? = null,
 
             // Check if all sims have finished
             if (simulations.sumBy { if (it.isFinished()) 1 else 0 } == simulations.size) {
+                // Set the fitness of each population member
+                genetics.setPopulationFitnesses(simulations.map { it.getFitness() })
+
                 // Ok, carry out genetics on the sims weights
                 val newWeights = genetics.epoch()
 

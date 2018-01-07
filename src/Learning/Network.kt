@@ -1,11 +1,12 @@
 package Learning
 
+import Simulation.ASTEROIDS_TO_CONSIDER
 import Utilities.NonDeterminism
 
 private const val LAYER_COUNT = 3
-private const val HIDDEN_NEURON_COUNT = 6
-private const val INPUT_COUNT = 4
+private const val INPUT_COUNT = ASTEROIDS_TO_CONSIDER * 2
 private const val OUTPUT_COUNT = 2
+private const val HIDDEN_NEURON_COUNT = INPUT_COUNT + OUTPUT_COUNT / 2
 private const val BIAS = 0
 private const val ACTIVATION_RESPONSE = 1
 
@@ -30,29 +31,32 @@ class Network {
 
     fun setWeights(weights: Array<Double>) {
         layers.clear()
-
         for (layer in 0 until LAYER_COUNT) {
-            val startIndex = if (LAYER_COUNT == 2) layer * INPUT_COUNT + layer * OUTPUT_COUNT else layer * INPUT_COUNT + layer * HIDDEN_NEURON_COUNT
-            val endIndex = if (LAYER_COUNT == 2) startIndex + layer * OUTPUT_COUNT else startIndex + layer * HIDDEN_NEURON_COUNT
-
-            when (layer) {
-                0 -> { layers.add(Layer(INPUT_COUNT, HIDDEN_NEURON_COUNT, weights.sliceArray(IntRange(startIndex, endIndex)))) }
-                LAYER_COUNT - 1 -> { layers.add(Layer(if(LAYER_COUNT == 2) { INPUT_COUNT } else { HIDDEN_NEURON_COUNT }, OUTPUT_COUNT, weights.sliceArray(IntRange(startIndex, endIndex)))) }
-                else -> { layers.add(Layer(HIDDEN_NEURON_COUNT, HIDDEN_NEURON_COUNT, weights.sliceArray(IntRange(startIndex, endIndex)))) }
-            }
-
             when (layer) {
                 0 -> {
-                    layers.add(Layer(INPUT_COUNT, HIDDEN_NEURON_COUNT, weights.sliceArray(IntRange(layer, INPUT_COUNT * HIDDEN_NEURON_COUNT + 1))))
+                    layers.add(Layer(INPUT_COUNT, HIDDEN_NEURON_COUNT, weights.sliceArray(IntRange(0, INPUT_COUNT * HIDDEN_NEURON_COUNT))))
                 }
                 LAYER_COUNT - 1 -> {
-                    val startIndex = INPUT_COUNT * HIDDEN_NEURON_COUNT + 1 + layer * HIDDEN_NEURON_COUNT
-                    layers.add(Layer(HIDDEN_NEURON_COUNT, OUTPUT_COUNT, weights.sliceArray(IntRange(startIndex, weights.size - 1))))
+                    val startIndex = layers.sumBy { it.weights.size - 1 }
+                    val endIndex = when (LAYER_COUNT) {
+                        2 -> {
+                            startIndex + INPUT_COUNT * OUTPUT_COUNT
+                        } else -> {
+                            startIndex + HIDDEN_NEURON_COUNT * OUTPUT_COUNT
+                        }
+                    }
+                    when (LAYER_COUNT) {
+                        2 -> {
+                            layers.add(Layer(INPUT_COUNT, OUTPUT_COUNT, weights.sliceArray(IntRange(startIndex, endIndex))))
+                        } else -> {
+                            layers.add(Layer(HIDDEN_NEURON_COUNT, OUTPUT_COUNT, weights.sliceArray(IntRange(startIndex, endIndex))))
+                        }
+                    }
                 }
                 else -> {
-                    val startIndex = INPUT_COUNT * HIDDEN_NEURON_COUNT + 1 + layer * HIDDEN_NEURON_COUNT
-                    val endIdex = startIndex + (HIDDEN_NEURON_COUNT * HIDDEN_NEURON_COUNT) + 1
-                    layers.add(Layer(HIDDEN_NEURON_COUNT, HIDDEN_NEURON_COUNT, weights.sliceArray(IntRange(startIndex, endIdex))))
+                    val startIndex = layers.sumBy { it.weights.size - 1 }
+                    val endIndex = startIndex + HIDDEN_NEURON_COUNT * HIDDEN_NEURON_COUNT
+                    layers.add(Layer(HIDDEN_NEURON_COUNT, HIDDEN_NEURON_COUNT, weights.sliceArray(IntRange(startIndex, endIndex))))
                 }
             }
         }

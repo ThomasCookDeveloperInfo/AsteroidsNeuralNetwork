@@ -2,22 +2,43 @@ package GUI
 
 import Learning.Genetics
 import Simulation.Simulation
+import javafx.animation.AnimationTimer
 import javafx.fxml.FXML
 import javafx.scene.paint.Color
 import javafx.scene.canvas.Canvas
 import javafx.scene.layout.AnchorPane
-import java.util.*
 
-private const val FRAME_TIME_MILLISECONDS = 25L
 private const val SIMULATIONS_TO_RUN = 100
-private const val COLUMNS = 10
+private const val COLUMNS = 1
 
 // The controller for all the simulations
 class SimulationController(@FXML private var mainPane: AnchorPane? = null,
                            @FXML private var canvas: Canvas? = null,
-                           private val frameTimer: Timer = Timer(),
-                           private val genetics: Genetics = Genetics(SIMULATIONS_TO_RUN),
-                           private val simulations: MutableCollection<Simulation> = mutableListOf()) {
+                           private val simulations: MutableCollection<Simulation> = mutableListOf(),
+                           private val genetics: Genetics = Genetics()) {
+
+    // Frame timer for updating the sim states and redrawing
+    private val frameTimer: AnimationTimer = object: AnimationTimer() {
+        override fun handle(now: Long) {
+            // Update the simulations
+            simulations.forEach { it.update() }
+
+            // Check if all sims have finished
+            if (simulations.sumBy { if (it.isFinished()) 1 else 0 } == simulations.size) {
+                // Ok, carry out genetics on the sims weights
+                val newWeights = genetics.epoch()
+
+                // Then reset sims and apply weights to sim networks
+                simulations.forEachIndexed { index, sim ->
+                    sim.applyWeights(newWeights.elementAt(index))
+                    sim.start()
+                }
+            }
+
+            // Invalide
+            invalidate()
+        }
+    }
 
     // Reset everything
     @FXML
@@ -29,13 +50,9 @@ class SimulationController(@FXML private var mainPane: AnchorPane? = null,
             simulations.add(simulation)
         }
 
-        // Setup the frame timer
-        frameTimer.schedule(object : TimerTask() {
-            override fun run() {
-                simulations.forEach { it.update() }
-                invalidate()
-            }
-        }, 0, FRAME_TIME_MILLISECONDS)
+        simulations.forEach {
+            genetics.addPopulationMember(it.getWeights())
+        }
 
         // Setup the canvas to resize itself based on the parent frame
         mainPane?.heightProperty()?.addListener({ ov, oldValue, newValue ->
@@ -49,10 +66,13 @@ class SimulationController(@FXML private var mainPane: AnchorPane? = null,
                 it.width = newValue.toDouble()
             }
         })
+
+        // Start the frame time
+        frameTimer.start()
     }
 
     // Invalidate the canvas and redraw everything
-    fun invalidate() {
+    private fun invalidate() {
         canvas?.let { canvas ->
             // Get the canvas dimensions
             val canvasWidth = canvas.width

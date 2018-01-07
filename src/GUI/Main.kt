@@ -1,5 +1,6 @@
 package GUI
 
+import javafx.animation.AnimationTimer
 import javafx.application.Application
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
@@ -20,6 +21,12 @@ class Asteroids : Application() {
         primaryStage.title = TITLE
         primaryStage.scene = Scene(root, WIDTH, HEIGHT)
         primaryStage.show()
+
+        object: AnimationTimer() {
+            override fun handle(now: Long) {
+
+            }
+        }
     }
 
     object Entry{

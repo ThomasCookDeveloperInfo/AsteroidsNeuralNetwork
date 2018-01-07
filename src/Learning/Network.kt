@@ -29,10 +29,32 @@ class Network {
     }
 
     fun setWeights(weights: Array<Double>) {
-        var currentIndex = 0
-        layers.forEach { layer ->
-            layer.weights = weights.sliceArray(IntRange(currentIndex, layer.inputSize))
-            currentIndex += layer.inputSize
+        layers.clear()
+
+        for (layer in 0 until LAYER_COUNT) {
+            val startIndex = if (LAYER_COUNT == 2) layer * INPUT_COUNT + layer * OUTPUT_COUNT else layer * INPUT_COUNT + layer * HIDDEN_NEURON_COUNT
+            val endIndex = if (LAYER_COUNT == 2) startIndex + layer * OUTPUT_COUNT else startIndex + layer * HIDDEN_NEURON_COUNT
+
+            when (layer) {
+                0 -> { layers.add(Layer(INPUT_COUNT, HIDDEN_NEURON_COUNT, weights.sliceArray(IntRange(startIndex, endIndex)))) }
+                LAYER_COUNT - 1 -> { layers.add(Layer(if(LAYER_COUNT == 2) { INPUT_COUNT } else { HIDDEN_NEURON_COUNT }, OUTPUT_COUNT, weights.sliceArray(IntRange(startIndex, endIndex)))) }
+                else -> { layers.add(Layer(HIDDEN_NEURON_COUNT, HIDDEN_NEURON_COUNT, weights.sliceArray(IntRange(startIndex, endIndex)))) }
+            }
+
+            when (layer) {
+                0 -> {
+                    layers.add(Layer(INPUT_COUNT, HIDDEN_NEURON_COUNT, weights.sliceArray(IntRange(layer, INPUT_COUNT * HIDDEN_NEURON_COUNT + 1))))
+                }
+                LAYER_COUNT - 1 -> {
+                    val startIndex = INPUT_COUNT * HIDDEN_NEURON_COUNT + 1 + layer * HIDDEN_NEURON_COUNT
+                    layers.add(Layer(HIDDEN_NEURON_COUNT, OUTPUT_COUNT, weights.sliceArray(IntRange(startIndex, weights.size - 1))))
+                }
+                else -> {
+                    val startIndex = INPUT_COUNT * HIDDEN_NEURON_COUNT + 1 + layer * HIDDEN_NEURON_COUNT
+                    val endIdex = startIndex + (HIDDEN_NEURON_COUNT * HIDDEN_NEURON_COUNT) + 1
+                    layers.add(Layer(HIDDEN_NEURON_COUNT, HIDDEN_NEURON_COUNT, weights.sliceArray(IntRange(startIndex, endIdex))))
+                }
+            }
         }
     }
 
@@ -46,7 +68,7 @@ class Network {
     }
 
     // Gets the weights of all the layers as a single array
-    fun getAllWeights() : Array<Double> {
+    fun getCopyOfWeights() : Array<Double> {
         val weights = mutableListOf<Double>()
         layers.forEach { layer ->
             weights.addAll(layer.weights)
@@ -75,7 +97,7 @@ class Network {
                 // Foreach input, multiply by the corresponding weight
                 var netInput = 0.0
                 for (input in 0 until inputs.size) {
-                    netInput += weights[input * output + 1]
+                    netInput += weights[input * output + 1] * inputs[input]
                 }
 
                 // Add the bias

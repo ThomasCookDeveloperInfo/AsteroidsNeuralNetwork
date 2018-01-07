@@ -7,13 +7,18 @@ private const val MUTATION_CHANCE = 0.01
 private const val MAX_PERTURBATION = 0.1
 
 // Functions for performing selection, crossover and mutation of a networks weights
-class Genetics(populationSize: Int) {
+class Genetics {
 
     // The population of network members to perform genetic selection on
-    val population = Array(populationSize, { _ -> NetworkPopulationMember() })
+    private val population = mutableListOf<NetworkPopulationMember>()
+
+    // Creates a population member with the passed weights
+    fun addPopulationMember(weights: DoubleArray) {
+        population.add(NetworkPopulationMember(weights.toTypedArray()))
+    }
 
     // Starts a new epoch
-    fun epoch() {
+    fun epoch() : Collection<DoubleArray> {
         // Create a new population
         val newPopulation = mutableListOf<NetworkPopulationMember>()
 
@@ -29,6 +34,13 @@ class Genetics(populationSize: Int) {
             // Add child to new population
             newPopulation.add(child)
         }
+
+        // Clear the current pop and set to the new one
+        population.clear()
+        population.addAll(newPopulation)
+
+        // Return a copy of the new population
+        return newPopulation.map { it.network.getCopyOfWeights().toDoubleArray() }
     }
 
     // Selects a member from the population using roullette method
@@ -65,7 +77,7 @@ class Genetics(populationSize: Int) {
 class NetworkPopulationMember(val network: Network = Network()) {
 
     // Constructor for creating a new member with specified set of weights
-    constructor(weights: Array<Double>) : this(Network( ))
+    constructor(weights: Array<Double>) : this(Network())
 
     // Tracks the fitness of this member with respect to the rest of the population
     var fitness = 0.0
@@ -74,12 +86,12 @@ class NetworkPopulationMember(val network: Network = Network()) {
     fun crossover(with: NetworkPopulationMember) : NetworkPopulationMember {
         // If the crossover rate is not met, or the parents are the same just return a copy of one of them
         if (NonDeterminism.randomNetworkWeight() > CROSSOVER_RATE || this == with) {
-            return NetworkPopulationMember(this.network.getAllWeights())
+            return NetworkPopulationMember(this.network.getCopyOfWeights())
         }
 
         // Get the weights of the parents
-        val mumWeights = with.network.getAllWeights()
-        val dadWeights = this.network.getAllWeights()
+        val mumWeights = with.network.getCopyOfWeights()
+        val dadWeights = this.network.getCopyOfWeights()
 
         // Determine the random crossover point
         val crossoverPoint = NonDeterminism.randomCrossoverPoint(mumWeights.size - 1)

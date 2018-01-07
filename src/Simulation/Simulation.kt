@@ -11,11 +11,11 @@ import javafx.scene.shape.Polygon
 import javafx.scene.shape.Shape
 import javafx.util.Duration
 
-private const val SIM_TIMEOUT_SECONDS = 30.0
+const val SIM_TIMEOUT_SECONDS = 30.0
 private const val ASTEROIDS = 4
 private const val MAX_CHUNK_FACTOR = 3
 private const val CHUNK_COUNT = 3
-private const val MAX_ASTEROIDS = ASTEROIDS + (ASTEROIDS * CHUNK_COUNT) + (ASTEROIDS * CHUNK_COUNT * MAX_CHUNK_FACTOR)
+const val MAX_ASTEROIDS = ASTEROIDS + (ASTEROIDS * CHUNK_COUNT) + (ASTEROIDS * CHUNK_COUNT * MAX_CHUNK_FACTOR)
 const val SIM_WIDTH = 1000.0
 const val SIM_HEIGHT = 600.0
 
@@ -247,7 +247,8 @@ private const val DRAG_COEFFICIENT = 0.025
 private const val ROTATIONAL_DRAG_COEFFICIENT = 0.1
 private const val MAX_ROT_VEL = 15.0
 private const val MAX_VEL = 0.1
-const val ASTEROIDS_TO_CONSIDER = 10
+private const val ASTEROID_FITNESS_WEIGHT = 20.0
+const val ASTEROIDS_TO_CONSIDER = 5
 
 class Ship : Bullet.Callbacks {
 
@@ -308,9 +309,7 @@ class Ship : Bullet.Callbacks {
      * Fitness
     */
     fun fitness() : Double {
-        val asteroidDestroyedDelta = MAX_ASTEROIDS - asteroidsDestroyed
-        return (((asteroidsDestroyed / if (asteroidDestroyedDelta <= 0) 1 else asteroidDestroyedDelta)) * 10
-                * Math.abs(SIM_TIMEOUT_SECONDS - secondsSurvived)) / SIM_TIMEOUT_SECONDS
+        return (asteroidsDestroyed * ASTEROID_FITNESS_WEIGHT) * secondsSurvived
     }
 
     /**
@@ -357,12 +356,12 @@ class Ship : Bullet.Callbacks {
                 }
             }
             val closestAsteroid = asteroids.elementAt(closestIndex)
-            vectors.add(Pair(this.x - (this.x - closestAsteroid.x), this.y - (this.y - closestAsteroid.y)))
+            vectors.add(Pair(closestAsteroid.x - this.x, closestAsteroid.y - this.y))
             selectedIndexes.add(closestIndex)
         }
 
         while (vectors.size != ASTEROIDS_TO_CONSIDER) {
-            vectors.add(Pair(Double.MAX_VALUE, Double.MAX_VALUE))
+            vectors.add(Pair(x, y))
         }
 
         return vectors
@@ -382,8 +381,8 @@ class Ship : Bullet.Callbacks {
 
         // Get the network outputs
         val networkOutputs = network.update(flattenedVectors.toTypedArray())
-        val torque =  ((1.0 - -1.0) / (1.0 - 0.0)) * (networkOutputs[0] - 1.0) + 1.0
-        val thrust = networkOutputs[1]
+        val torque = networkOutputs[0] - networkOutputs[1]
+        val thrust = networkOutputs[2]
 
         // Apply the outputs
         vRot = Math.max(-MAX_ROT_VEL, Math.min(MAX_ROT_VEL, vRot + torque)) - ROTATIONAL_DRAG_COEFFICIENT * vRot
@@ -467,8 +466,8 @@ class Ship : Bullet.Callbacks {
 //        vectorsToClosestAsteroids.forEach {
 //            val shipXOrigin = (x / xScale) + xPos
 //            val shipYOrigin = (y / yScale) + yPos
-//            val asteroidXOrigin = (it.first / xScale) + xPos
-//            val asteroidYOrigin = (it.second / yScale) + yPos
+//            val asteroidXOrigin = (it.first / xScale) + xPos + this.x
+//            val asteroidYOrigin = (it.second / yScale) + yPos + this.y
 //            val xArray = doubleArrayOf(shipXOrigin, asteroidXOrigin)
 //            val yArray = doubleArrayOf(shipYOrigin, asteroidYOrigin)
 //            shapes.add(Pair(xArray, yArray))

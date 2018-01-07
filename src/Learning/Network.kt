@@ -5,7 +5,7 @@ import Utilities.NonDeterminism
 
 private const val LAYER_COUNT = 3
 private const val INPUT_COUNT = ASTEROIDS_TO_CONSIDER * 2
-private const val OUTPUT_COUNT = 2
+private const val OUTPUT_COUNT = 3
 private const val HIDDEN_NEURON_COUNT = INPUT_COUNT + OUTPUT_COUNT / 2
 private const val BIAS = 0
 private const val ACTIVATION_RESPONSE = 1

@@ -2,8 +2,8 @@ package Learning
 
 import Utilities.NonDeterminism
 
-private const val CROSSOVER_RATE = 1
-private const val MUTATION_CHANCE = 0.025
+private const val CROSSOVER_RATE = 1.75
+private const val MUTATION_CHANCE = 0.01
 private const val MAX_PERTURBATION = 0.1
 
 // Functions for performing selection, crossover and mutation of a networks weights
@@ -84,7 +84,9 @@ class Genetics {
 class NetworkPopulationMember(val network: Network = Network()) {
 
     // Constructor for creating a new member with specified set of weights
-    constructor(weights: Array<Double>) : this(Network())
+    constructor(weights: Array<Double>) : this(Network()) {
+        network.setWeights(weights)
+    }
 
     // Tracks the fitness of this member with respect to the rest of the population
     var fitness = 0.0
@@ -92,7 +94,7 @@ class NetworkPopulationMember(val network: Network = Network()) {
     // Performs crossover with the passed member and returns a new member
     fun crossover(with: NetworkPopulationMember) : NetworkPopulationMember {
         // If the crossover rate is not met, or the parents are the same just return a copy of one of them
-        if (NonDeterminism.randomDouble(2.0) > CROSSOVER_RATE || this == with) {
+        if (NonDeterminism.randomDouble(2.0) < CROSSOVER_RATE || this == with) {
             return NetworkPopulationMember(this.network.getCopyOfWeights())
         }
 
@@ -110,7 +112,7 @@ class NetworkPopulationMember(val network: Network = Network()) {
 
         for (index in 0 until childWeights.size) {
             if (NonDeterminism.randomDouble() < MUTATION_CHANCE) {
-                childWeights[index] += NonDeterminism.randomNetworkWeight() * MAX_PERTURBATION
+                childWeights[index] += if(NonDeterminism.randomBoolean()) MAX_PERTURBATION else - MAX_PERTURBATION
             }
         }
 

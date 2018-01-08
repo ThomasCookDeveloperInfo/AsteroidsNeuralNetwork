@@ -10,8 +10,8 @@ import javafx.scene.control.Button
 import javafx.scene.layout.VBox
 import Simulation.Configuration
 
-private const val SIMULATIONS_TO_RUN = 9
-private const val COLUMNS = 3
+private const val SIMULATIONS_TO_RUN = 100
+private const val COLUMNS = 10
 
 // The controller for all the simulations
 class SimulationController(@FXML private var mainPane: VBox? = null,

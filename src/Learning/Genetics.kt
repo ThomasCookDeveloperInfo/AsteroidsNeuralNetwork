@@ -12,6 +12,11 @@ class Genetics {
     // The population of network members to perform genetic selection on
     private val population = mutableListOf<NetworkPopulationMember>()
 
+    // Reset the genetics
+    fun reset() {
+        population.clear()
+    }
+
     // Creates a population member with the passed weights
     fun addPopulationMember(weights: DoubleArray) {
         population.add(NetworkPopulationMember(weights.toTypedArray()))

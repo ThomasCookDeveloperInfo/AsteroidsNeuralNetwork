@@ -108,13 +108,15 @@ class Network {
                 netInput += weights.last() * BIAS
 
                 // Set the output
-                outputs[output] = sigmoid(netInput)
+                outputs[output] = tanh(netInput)
             }
 
             return outputs
         }
 
         // Calculate the sigmoid derivative of the passed input
-        private fun sigmoid(input: Double) : Double = 1 / (1 + Math.exp(-input / ACTIVATION_RESPONSE))
+        private fun sigmoid(input: Double) : Double = 1 / (1 + Math.exp(-input))
+        // Calculate the tanh derivative of the passed input
+        private fun tanh(input: Double) : Double = 2 * sigmoid(input * 2) - 1
     }
 }

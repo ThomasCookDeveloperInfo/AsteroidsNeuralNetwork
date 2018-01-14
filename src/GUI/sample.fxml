@@ -9,6 +9,7 @@
     <children>
         <Canvas fx:id="canvas" focusTraversable="true" height="668.0"/>
         <Button fx:id="resetButton" prefHeight="50.0" prefWidth="150.0" text="Reset" />
+        <Button fx:id="debugButton" prefHeight="50.0" prefWidth="150.0" text="Debug" />
     </children>
 
 </VBox>

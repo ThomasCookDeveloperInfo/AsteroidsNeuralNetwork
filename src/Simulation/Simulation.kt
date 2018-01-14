@@ -11,18 +11,18 @@ import javafx.scene.shape.Polygon
 import javafx.scene.shape.Shape
 import javafx.util.Duration
 
-data class Configuration(val simTimeoutSeconds: Double = 30.0,
+data class Configuration(val simTimeoutSeconds: Double = 90.0,
                          val asteroids: Int = 4,
                          val maxChunkFactor: Int = 3,
                          val chunkCount: Int = 3,
                          val maxAsteroids: Int = asteroids + ( asteroids * chunkCount) + (asteroids * chunkCount * maxChunkFactor),
-                         val reloadTimeMilliseconds: Double = 200.0,
+                         val reloadTimeMilliseconds: Double = 333.0,
                          val dragCoefficient: Double = 0.025,
                          val rotationalDragCoefficient: Double = 0.1,
                          val maxVel: Double = 0.1,
                          val maxRotVel: Double = 15.0,
                          val asteroidFitnessWeight: Double = 20.0,
-                         val asteroidsToConsider: Int = 2,
+                         val asteroidsToConsider: Int = 20,
                          val bulletVel: Double = 5.0,
                          val bulletTimeoutMilliseconds: Double = 2000.0)
 
@@ -96,8 +96,6 @@ class Simulation(private val configuration: Configuration) : Ship.Callbacks {
             }
         }
 
-
-
         bulletsToRemove.forEach { bullets.elementAtOrNull(it)?.explode() }
         asteroidsToRemove.forEach {
             asteroids.elementAtOrNull(it)?.let {
@@ -112,7 +110,7 @@ class Simulation(private val configuration: Configuration) : Ship.Callbacks {
         }
 
         if (asteroids.size == 0) {
-            running = false
+            stop()
         }
     }
 
@@ -163,8 +161,8 @@ class Asteroid(var size: Int = 1) {
     /**
      * State variables
      */
-    var x = NonDeterminism.randomDouble(SIM_WIDTH)
-    var y = NonDeterminism.randomDouble(SIM_HEIGHT)
+    var x = NonDeterminism.randomAsteroidX(SIM_WIDTH)
+    var y = NonDeterminism.randomAsteroidY(SIM_HEIGHT)
 
     private var vX = (((1.0 - -1.0) / (1.0 - 0.0)) * (NonDeterminism.randomDouble() - 1.0) + 1.0) * size
     private var vY = (((1.0 - -1.0) / (1.0 - 0.0)) * (NonDeterminism.randomDouble() - 1.0) + 1.0) * size
@@ -259,8 +257,11 @@ const val MILLISECONDS_IN_SECOND = 1000.0
 
 class Ship(private val configuration: Configuration) : Bullet.Callbacks {
 
-    private var canShoot = true
-    private var reloadTimer: Timeline? = null
+    private var canShoot = false
+    private val reloadTimer = Timeline(KeyFrame(Duration.millis(configuration.reloadTimeMilliseconds), EventHandler<javafx.event.ActionEvent> {
+        canShoot = true
+    }, null))
+
     private var secondsSurvived = 0
     private var secondsElapsedWhenWon: Int? = null
     private var asteroidsDestroyed = 0
@@ -275,13 +276,15 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
     }
 
     private fun updateSecondsSurvived() {
+        survivalTimer.stop()
         secondsSurvived++
         survivalTimer.play()
     }
 
     fun stop() {
         survivalTimer.stop()
-        secondsElapsedWhenWon = secondsSurvived
+        reloadTimer.stop()
+        if (asteroidsDestroyed == configuration.asteroids) { secondsElapsedWhenWon = secondsSurvived }
     }
 
     /**
@@ -306,7 +309,7 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
     /**
      * Network
      */
-    private val network = Network()
+    private val network = Network(configuration)
     fun getCopyOfNetworkWeights(): Array<Double> {
         return network.getCopyOfWeights()
     }
@@ -318,11 +321,8 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
      * Fitness
     */
     fun fitness() : Double {
-        var baseFitness = asteroidsDestroyed * configuration.asteroidFitnessWeight * secondsSurvived
-        secondsElapsedWhenWon?.let {
-            baseFitness * it
-        }
-        return baseFitness
+        val deltaTime = configuration.simTimeoutSeconds - secondsSurvived
+        return (asteroidsDestroyed * configuration.asteroidFitnessWeight) * if (deltaTime > 0) deltaTime else 1.0
     }
 
     /**
@@ -338,7 +338,7 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
 
     fun reset() {
         survivalTimer.stop()
-        reloadTimer?.stop()
+        reloadTimer.stop()
         x = SIM_WIDTH / 2
         y = SIM_HEIGHT / 2
         vX = 0.0
@@ -351,7 +351,7 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
         secondsElapsedWhenWon = null
         asteroidsDestroyed = 0
         secondsSurvived = 0
-        reloadTimer?.play()
+        reloadTimer.play()
         survivalTimer.play()
     }
 
@@ -373,8 +373,6 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
                         closestDistance = distance
                         closestIndex = index
                     }
-
-
                 }
             }
             val closestAsteroid = asteroids.elementAtOrNull(closestIndex)
@@ -383,8 +381,10 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
                 val j = if (this.y - it.y > SIM_HEIGHT / 2) 1 else if (this.y - it.y < -SIM_HEIGHT / 2) -1 else 0
                 val dx = it.x + i * SIM_WIDTH - this.x
                 val dy = it.y + j * SIM_HEIGHT - this.y
+                val normalizedDx = ((1.0 - -1.0) / (SIM_WIDTH - -SIM_WIDTH)) * (dx - SIM_WIDTH) + 1.0
+                val normalizedDy = ((1.0 - -1.0) / (SIM_HEIGHT - -SIM_HEIGHT)) * (dy - SIM_HEIGHT) + 1.0
 
-                vectors.add(Pair(dx, dy))
+                vectors.add(Pair(normalizedDx, normalizedDy))
                 selectedIndexes.add(closestIndex)
             }
             closestIndex = -1
@@ -408,18 +408,26 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
             flattenedVectors.add(vectorsToClosestAsteroids.elementAt(index).first)
             flattenedVectors.add(vectorsToClosestAsteroids.elementAt(index).second)
         }
+        flattenedVectors.add(vX)
+        flattenedVectors.add(vY)
+        flattenedVectors.add(vRot)
 
         // Get the network outputs
         val networkOutputs = network.update(flattenedVectors.toTypedArray())
-        val torque = networkOutputs[0]
-        val thrust = ((1.0 - 0.0) / (1.0 - -1.0)) * (networkOutputs[1] - -1.0) + 1.0
-        val wantsToShoot = networkOutputs[2] > 0
+
+//        val torque = networkOutputs[0]
+//        val thrust = ((1.0 - 0.0) / (1.0 - -1.0)) * (networkOutputs[1] - 1.0) + 1.0
+//        val wantsToShoot = networkOutputs[2] > 0
+
+        val torque = if (networkOutputs[0] > 0.0) 1.0 else if (networkOutputs[0] < 0.0) -1.0 else 0.0
+        val thrust = if (networkOutputs[1] > 0.0) 1.0 else 0.0
+        val wantsToShoot = networkOutputs[2] > 0.0
 
         // Apply the outputs
         vRot = Math.max(-configuration.maxRotVel, Math.min(configuration.maxRotVel, vRot + torque)) - configuration.rotationalDragCoefficient * vRot
         rot += vRot
-        vX += Math.max(-configuration.maxVel, Math.min(configuration.maxVel, thrust * -Math.sin(Math.toRadians(rot)))) - configuration.rotationalDragCoefficient * vX
-        vY += Math.max(-configuration.maxVel, Math.min(configuration.maxVel, thrust * Math.cos(Math.toRadians(rot)))) - configuration.rotationalDragCoefficient * vY
+        vX += Math.max(-configuration.maxVel, Math.min(configuration.maxVel, thrust * -Math.sin(Math.toRadians(rot)))) - configuration.dragCoefficient * vX
+        vY += Math.max(-configuration.maxVel, Math.min(configuration.maxVel, thrust * Math.cos(Math.toRadians(rot)))) - configuration.dragCoefficient * vY
         x += vX
         y += vY
         if (x > SIM_WIDTH) x = 0.0
@@ -429,14 +437,12 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
 
         // Shoot a bullet
         if (canShoot && wantsToShoot) {
+            reloadTimer.stop()
             canShoot = false
             val bullet = Bullet(configuration, x, y, x, y, vX, vY, rot)
             bullet.setCallbacks(this)
             bullets.add(bullet)
-            reloadTimer = Timeline(KeyFrame(Duration.millis(configuration.reloadTimeMilliseconds), EventHandler<javafx.event.ActionEvent> {
-                canShoot = true
-            }, null))
-            reloadTimer?.play()
+            reloadTimer.play()
         }
 
         // Update all the bullets
@@ -503,16 +509,22 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
         val yScale = SIM_HEIGHT / renderHeight
 
        return vectorsToClosestAsteroids.map {
+           val dx = it.first
+           val dy = it.second
+
+           val unnormalizedDx = ((SIM_WIDTH - -SIM_WIDTH) / (1.0 - -1.0)) * (dx - 1.0) + SIM_WIDTH
+           val unnormalizedDy = ((SIM_HEIGHT - -SIM_HEIGHT) / (1.0 - -1.0)) * (dy - 1.0) + SIM_HEIGHT
+
            val shipXOrigin = (x / xScale) + xPos
            val shipYOrigin = (y / yScale) + yPos
-           var asteroidXOrigin = x + it.first
+           var asteroidXOrigin = x + unnormalizedDx
            if (asteroidXOrigin < 0.0) {
                asteroidXOrigin = 0.0
            } else if (asteroidXOrigin > SIM_WIDTH) {
                asteroidXOrigin = SIM_WIDTH
            }
            asteroidXOrigin = asteroidXOrigin / xScale + xPos
-           var asteroidYOrigin = y + it.second
+           var asteroidYOrigin = y + unnormalizedDy
            if (asteroidYOrigin < 0.0) {
                asteroidYOrigin = 0.0
            } else if (asteroidYOrigin > SIM_HEIGHT) {

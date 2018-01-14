@@ -1,13 +1,15 @@
 package Learning
 
+import Simulation.Configuration
 import Utilities.NonDeterminism
 
 private const val CROSSOVER_RATE = 1.75
 private const val MUTATION_CHANCE = 0.01
 private const val MAX_PERTURBATION = 0.1
+private const val ELITES = 3
 
 // Functions for performing selection, crossover and mutation of a networks weights
-class Genetics {
+class Genetics(private val configuration: Configuration) {
 
     // The population of network members to perform genetic selection on
     private val population = mutableListOf<NetworkPopulationMember>()
@@ -19,7 +21,7 @@ class Genetics {
 
     // Creates a population member with the passed weights
     fun addPopulationMember(weights: DoubleArray) {
-        population.add(NetworkPopulationMember(weights.toTypedArray()))
+        population.add(NetworkPopulationMember(configuration, weights.toTypedArray()))
     }
 
     // Sets the population fitnesses to the passed set of doubles
@@ -31,8 +33,17 @@ class Genetics {
 
     // Starts a new epoch
     fun epoch() : Collection<DoubleArray> {
+        // Sort the current population by fitness
+        population.sortByDescending { it.fitness }
+
         // Create a new population
         val newPopulation = mutableListOf<NetworkPopulationMember>()
+
+        // Add elites (the best one from the current population gets copied into the new population N times)
+        for (elite in 0 until ELITES) {
+            val eliteMember = NetworkPopulationMember(configuration, population.first().network.getCopyOfWeights())
+            newPopulation.add(eliteMember)
+        }
 
         // While the new population still needs filling
         while (newPopulation.size < population.size) {
@@ -86,10 +97,10 @@ class Genetics {
 }
 
 // Represents a network as a member of an evolving population set
-class NetworkPopulationMember(val network: Network = Network()) {
+class NetworkPopulationMember(private val configuration: Configuration, val network: Network = Network(configuration)) {
 
     // Constructor for creating a new member with specified set of weights
-    constructor(weights: Array<Double>) : this(Network()) {
+    constructor(configuration: Configuration, weights: Array<Double>) : this(configuration) {
         network.setWeights(weights)
     }
 
@@ -100,7 +111,7 @@ class NetworkPopulationMember(val network: Network = Network()) {
     fun crossover(with: NetworkPopulationMember) : NetworkPopulationMember {
         // If the crossover rate is not met, or the parents are the same just return a copy of one of them
         if (NonDeterminism.randomDouble(2.0) < CROSSOVER_RATE || this == with) {
-            return NetworkPopulationMember(this.network.getCopyOfWeights())
+            return NetworkPopulationMember(configuration, this.network.getCopyOfWeights())
         }
 
         // Get the weights of the parents
@@ -122,6 +133,6 @@ class NetworkPopulationMember(val network: Network = Network()) {
         }
 
         // Create and return the child network
-        return NetworkPopulationMember(childWeights.toTypedArray())
+        return NetworkPopulationMember(configuration, childWeights.toTypedArray())
     }
 }

@@ -16,9 +16,13 @@ private const val COLUMNS = 10
 // The controller for all the simulations
 class SimulationController(@FXML private var mainPane: VBox? = null,
                            @FXML private var resetButton: Button? = null,
+                           @FXML private var debugButton: Button? = null,
                            @FXML private var canvas: Canvas? = null,
                            private val simulations: MutableCollection<Simulation> = mutableListOf(),
-                           private val genetics: Genetics = Genetics()) {
+                           private val genetics: Genetics = Genetics(Configuration())) {
+
+    // Track if we're debugging
+    private var isDebugging = false
 
     // Track the selected cell index
     private var selectedCellIndex: Int? = null
@@ -73,6 +77,10 @@ class SimulationController(@FXML private var mainPane: VBox? = null,
     fun initialize() {
         resetButton?.setOnMouseClicked {
             reset(Configuration())
+        }
+
+        debugButton?.setOnMouseClicked {
+            isDebugging = !isDebugging
         }
 
         // Setup the canvas to resize itself based on the parent frame
@@ -173,9 +181,6 @@ class SimulationController(@FXML private var mainPane: VBox? = null,
                         // Get the set of shapes to draw
                         val shapes = it.getShapes(simRenderWidth, xOrigin, simRenderHeight, yOrigin)
 
-                        // Get debug shapes
-                        val debugShapes = it.getDebugShapes(simRenderWidth, xOrigin, simRenderHeight, yOrigin)
-
                         // Draw to the canvas
                         context.apply {
                             // Fill the sims rect with black
@@ -199,9 +204,14 @@ class SimulationController(@FXML private var mainPane: VBox? = null,
                             stroke = Color.SLATEGRAY
                             fill = Color.SLATEGRAY
 
-                            // Draw the debug shapes
-                            debugShapes.forEach { shape ->
-                                strokePolygon(shape.first, shape.second, shape.first.size)
+                            if (isDebugging) {
+                                // Get debug shapes
+                                val debugShapes = it.getDebugShapes(simRenderWidth, xOrigin, simRenderHeight, yOrigin)
+
+                                // Draw the debug shapes
+                                debugShapes.forEach { shape ->
+                                    strokePolygon(shape.first, shape.second, shape.first.size)
+                                }
                             }
                         }
                     }

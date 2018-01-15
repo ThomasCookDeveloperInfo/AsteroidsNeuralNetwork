@@ -9,7 +9,7 @@ private const val MAX_PERTURBATION = 0.1
 private const val ELITES = 3
 
 // Functions for performing selection, crossover and mutation of a networks weights
-class Genetics(private val configuration: Configuration) {
+class Genetics(private val configuration: Configuration = Configuration()) {
 
     // The population of network members to perform genetic selection on
     private val population = mutableListOf<NetworkPopulationMember>()
@@ -52,10 +52,10 @@ class Genetics(private val configuration: Configuration) {
             val mum = rouletteSelection()
 
             // Create child
-            val child = dad.crossover(mum)
+            val children = dad.crossover(mum)
 
             // Add child to new population
-            newPopulation.add(child)
+            newPopulation.addAll(listOf(children.first, children.second))
         }
 
         // Clear the current pop and set to the new one
@@ -69,7 +69,7 @@ class Genetics(private val configuration: Configuration) {
     // Selects a member from the population using roullette method
     // This means the chance of being selected is directly proportional
     // To the fitness of the member in respect to the rest of the population
-    fun rouletteSelection() : NetworkPopulationMember {
+    private fun rouletteSelection() : NetworkPopulationMember {
         // Work out the total fitness of the population
         var totalPopulationFitness = 0.0
         population.forEach { member ->
@@ -108,10 +108,11 @@ class NetworkPopulationMember(private val configuration: Configuration, val netw
     var fitness = 0.0
 
     // Performs crossover with the passed member and returns a new member
-    fun crossover(with: NetworkPopulationMember) : NetworkPopulationMember {
+    fun crossover(with: NetworkPopulationMember) : Pair<NetworkPopulationMember, NetworkPopulationMember> {
         // If the crossover rate is not met, or the parents are the same just return a copy of one of them
         if (NonDeterminism.randomDouble(2.0) < CROSSOVER_RATE || this == with) {
-            return NetworkPopulationMember(configuration, this.network.getCopyOfWeights())
+            return Pair(NetworkPopulationMember(configuration, this.network.getCopyOfWeights()),
+                    NetworkPopulationMember(configuration, with.network.getCopyOfWeights()))
         }
 
         // Get the weights of the parents
@@ -121,18 +122,26 @@ class NetworkPopulationMember(private val configuration: Configuration, val netw
         // Determine the random crossover point
         val crossoverPoint = NonDeterminism.randomCrossoverPoint(mumWeights.size - 1)
 
-        // Create the child weights array
-        val childWeights = mutableListOf<Double>()
-        childWeights.addAll(mumWeights.sliceArray(IntRange(0, crossoverPoint)))
-        childWeights.addAll(dadWeights.sliceArray(IntRange(crossoverPoint, mumWeights.size - 1)))
+        // Create the child A weights array
+        val childWeightsA = mutableListOf<Double>()
+        childWeightsA.addAll(mumWeights.sliceArray(IntRange(0, crossoverPoint)))
+        childWeightsA.addAll(dadWeights.sliceArray(IntRange(crossoverPoint, mumWeights.size - 1)))
 
-        for (index in 0 until childWeights.size) {
+        // Create child B weights array
+        val childWeightsB = mutableListOf<Double>()
+        childWeightsB.addAll(dadWeights.sliceArray(IntRange(0, crossoverPoint)))
+        childWeightsB.addAll(mumWeights.sliceArray(IntRange(crossoverPoint, mumWeights.size - 1)))
+
+        for (index in 0 until childWeightsA.size) {
             if (NonDeterminism.randomDouble() < MUTATION_CHANCE) {
-                childWeights[index] += if(NonDeterminism.randomBoolean()) MAX_PERTURBATION else - MAX_PERTURBATION
+                childWeightsA[index] += if(NonDeterminism.randomBoolean()) MAX_PERTURBATION else - MAX_PERTURBATION
+            }
+            if (NonDeterminism.randomDouble() < MUTATION_CHANCE) {
+                childWeightsB[index] += if(NonDeterminism.randomBoolean()) MAX_PERTURBATION else - MAX_PERTURBATION
             }
         }
 
         // Create and return the child network
-        return NetworkPopulationMember(configuration, childWeights.toTypedArray())
+        return Pair(NetworkPopulationMember(configuration, childWeightsA.toTypedArray()), NetworkPopulationMember(configuration, childWeightsB.toTypedArray()))
     }
 }

@@ -19,7 +19,7 @@ class SimulationController(@FXML private var mainPane: VBox? = null,
                            @FXML private var debugButton: Button? = null,
                            @FXML private var canvas: Canvas? = null,
                            private val simulations: MutableCollection<Simulation> = mutableListOf(),
-                           private val genetics: Genetics = Genetics(Configuration())) {
+                           private val genetics: Genetics = Genetics()) {
 
     // Track if we're debugging
     private var isDebugging = false

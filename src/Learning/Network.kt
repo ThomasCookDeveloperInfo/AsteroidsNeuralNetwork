@@ -5,11 +5,10 @@ import Utilities.NonDeterminism
 
 private const val LAYER_COUNT = 3
 private const val OUTPUT_COUNT = 3
-private const val BIAS = 0
 
 // A simple ANN
 // No back prop as we'll train it with a GA
-class Network {
+class Network(private val configuration: Configuration) {
     
     private var inputCount = 0
     private var hiddenCount = 0
@@ -17,16 +16,15 @@ class Network {
     // The networks layers
     private val layers = mutableListOf<Layer>()
 
-    // Default constructor initializes all layers with random weights
-    constructor(configuration: Configuration) {
-        inputCount = configuration.asteroidsToConsider * 2 + 3
+    init {
+        inputCount = configuration.asteroidsToConsider * 2 + 2
         hiddenCount = inputCount + OUTPUT_COUNT / 2
         layers.clear()
         for (layer in 0 until LAYER_COUNT) {
             when (layer) {
-                0 -> { layers.add(Layer(inputCount, hiddenCount)) }
-                LAYER_COUNT - 1 -> { layers.add(Layer(if(LAYER_COUNT == 2) { inputCount } else { hiddenCount }, OUTPUT_COUNT)) }
-                else -> { layers.add(Layer(hiddenCount, hiddenCount)) }
+                0 -> { layers.add(Layer(configuration, inputCount, hiddenCount)) }
+                LAYER_COUNT - 1 -> { layers.add(Layer(configuration, if(LAYER_COUNT == 2) { inputCount } else { hiddenCount }, OUTPUT_COUNT)) }
+                else -> { layers.add(Layer(configuration, hiddenCount, hiddenCount)) }
             }
         }
     }
@@ -36,7 +34,7 @@ class Network {
         for (layer in 0 until LAYER_COUNT) {
             when (layer) {
                 0 -> {
-                    layers.add(Layer(inputCount, hiddenCount, weights.sliceArray(IntRange(0, inputCount * hiddenCount))))
+                    layers.add(Layer(configuration, inputCount, hiddenCount, weights.sliceArray(IntRange(0, inputCount * hiddenCount))))
                 }
                 LAYER_COUNT - 1 -> {
                     val startIndex = layers.sumBy { it.weights.size - 1 }
@@ -49,16 +47,16 @@ class Network {
                     }
                     when (LAYER_COUNT) {
                         2 -> {
-                            layers.add(Layer(inputCount, OUTPUT_COUNT, weights.sliceArray(IntRange(startIndex, endIndex))))
+                            layers.add(Layer(configuration, inputCount, OUTPUT_COUNT, weights.sliceArray(IntRange(startIndex, endIndex))))
                         } else -> {
-                            layers.add(Layer(hiddenCount, OUTPUT_COUNT, weights.sliceArray(IntRange(startIndex, endIndex))))
+                            layers.add(Layer(configuration, hiddenCount, OUTPUT_COUNT, weights.sliceArray(IntRange(startIndex, endIndex))))
                         }
                     }
                 }
                 else -> {
                     val startIndex = layers.sumBy { it.weights.size - 1 }
                     val endIndex = startIndex + hiddenCount * hiddenCount
-                    layers.add(Layer(hiddenCount, hiddenCount, weights.sliceArray(IntRange(startIndex, endIndex))))
+                    layers.add(Layer(configuration, hiddenCount, hiddenCount, weights.sliceArray(IntRange(startIndex, endIndex))))
                 }
             }
         }
@@ -83,9 +81,10 @@ class Network {
     }
 
     // Represents a layer in the artificial neural network
-    private class Layer(val inputSize: Int,
+    private class Layer(private val configuration: Configuration,
+                        private val inputSize: Int,
                         private val outputSize: Int,
-                        var weights: Array<Double> = Array((inputSize * outputSize) + 1, { _ ->
+                        var weights: Array<Double> = Array((inputSize * outputSize), { _ ->
                             NonDeterminism.randomNetworkWeight()
                         })) {
 
@@ -106,9 +105,6 @@ class Network {
                     netInput += weights[input * output + 1] * inputs[input]
                 }
 
-                // Add the bias
-                netInput += weights.last() * BIAS
-
                 // Set the output
                 outputs[output] = tanh(netInput)
             }
@@ -117,7 +113,7 @@ class Network {
         }
 
         // Calculate the sigmoid derivative of the passed input
-        private fun sigmoid(input: Double) : Double = 1 / (1 + Math.exp(-input))
+        private fun sigmoid(input: Double) : Double = 1 / (1 + Math.exp(-input / configuration.activationResponse))
         // Calculate the tanh derivative of the passed input
         private fun tanh(input: Double) : Double = 2 * sigmoid(input * 2) - 1
     }

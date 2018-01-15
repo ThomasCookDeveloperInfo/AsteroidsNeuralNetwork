@@ -12,7 +12,8 @@ import javafx.scene.shape.Shape
 import javafx.util.Duration
 
 data class Configuration(val simTimeoutSeconds: Double = 90.0,
-                         val asteroids: Int = 4,
+                         val activationResponse: Double = 1.0,
+                         val asteroids: Int = 5,
                          val maxChunkFactor: Int = 3,
                          val chunkCount: Int = 3,
                          val maxAsteroids: Int = asteroids + ( asteroids * chunkCount) + (asteroids * chunkCount * maxChunkFactor),
@@ -22,7 +23,7 @@ data class Configuration(val simTimeoutSeconds: Double = 90.0,
                          val maxVel: Double = 0.1,
                          val maxRotVel: Double = 15.0,
                          val asteroidFitnessWeight: Double = 20.0,
-                         val asteroidsToConsider: Int = 20,
+                         val asteroidsToConsider: Int = 5,
                          val bulletVel: Double = 5.0,
                          val bulletTimeoutMilliseconds: Double = 2000.0)
 
@@ -266,6 +267,7 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
     private var secondsElapsedWhenWon: Int? = null
     private var asteroidsDestroyed = 0
     private val vectorsToClosestAsteroids = mutableListOf<Pair<Double, Double>>()
+    private var directionVector = Pair(0.0, 0.0)
 
     private val survivalTimer: Timeline
     init {
@@ -321,8 +323,7 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
      * Fitness
     */
     fun fitness() : Double {
-        val deltaTime = configuration.simTimeoutSeconds - secondsSurvived
-        return (asteroidsDestroyed * configuration.asteroidFitnessWeight) * if (deltaTime > 0) deltaTime else 1.0
+        return asteroidsDestroyed * configuration.asteroidFitnessWeight
     }
 
     /**
@@ -348,6 +349,7 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
         canShoot = true
         bullets.clear()
         vectorsToClosestAsteroids.clear()
+        directionVector = Pair(0.0, 0.0)
         secondsElapsedWhenWon = null
         asteroidsDestroyed = 0
         secondsSurvived = 0
@@ -398,7 +400,7 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
     }
 
     fun update(asteroids: Collection<Asteroid>) {
-        // Get the the vectors to the 3 nearest asteroids
+        // Get the the vectors to the N nearest asteroids
         vectorsToClosestAsteroids.clear()
         vectorsToClosestAsteroids.addAll(vectorsToClosestAsteroids(asteroids))
 
@@ -408,20 +410,25 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
             flattenedVectors.add(vectorsToClosestAsteroids.elementAt(index).first)
             flattenedVectors.add(vectorsToClosestAsteroids.elementAt(index).second)
         }
-        flattenedVectors.add(vX)
-        flattenedVectors.add(vY)
-        flattenedVectors.add(vRot)
+
+        val dirX = -Math.sin(Math.toRadians(rot))
+        val dirY = Math.cos(Math.toRadians(rot))
+
+        // Get the ships current direction vector
+        directionVector = Pair(dirX, dirY)
+
+        flattenedVectors.addAll(listOf(directionVector.first, directionVector.second))
 
         // Get the network outputs
         val networkOutputs = network.update(flattenedVectors.toTypedArray())
 
-//        val torque = networkOutputs[0]
-//        val thrust = ((1.0 - 0.0) / (1.0 - -1.0)) * (networkOutputs[1] - 1.0) + 1.0
-//        val wantsToShoot = networkOutputs[2] > 0
+        val torque = networkOutputs[0]
+        val thrust = ((1.0 - 0.0) / (1.0 - -1.0)) * (networkOutputs[1] - 1.0) + 1.0
+        val wantsToShoot = networkOutputs[2] > 0
 
-        val torque = if (networkOutputs[0] > 0.0) 1.0 else if (networkOutputs[0] < 0.0) -1.0 else 0.0
-        val thrust = if (networkOutputs[1] > 0.0) 1.0 else 0.0
-        val wantsToShoot = networkOutputs[2] > 0.0
+//        val torque = if (networkOutputs[0] > 0.33) 1.0 else if (networkOutputs[0] < -0.33) -1.0 else 0.0
+//        val thrust = if (networkOutputs[1] > 0.0) 1.0 else 0.0
+//        val wantsToShoot = networkOutputs[2] > 0.0
 
         // Apply the outputs
         vRot = Math.max(-configuration.maxRotVel, Math.min(configuration.maxRotVel, vRot + torque)) - configuration.rotationalDragCoefficient * vRot
@@ -508,15 +515,16 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
         val xScale = SIM_WIDTH / renderWidth
         val yScale = SIM_HEIGHT / renderHeight
 
-       return vectorsToClosestAsteroids.map {
+        val shipXOrigin = (x / xScale) + xPos
+        val shipYOrigin = (y / yScale) + yPos
+
+       val asteroidVectors = vectorsToClosestAsteroids.map {
            val dx = it.first
            val dy = it.second
 
            val unnormalizedDx = ((SIM_WIDTH - -SIM_WIDTH) / (1.0 - -1.0)) * (dx - 1.0) + SIM_WIDTH
            val unnormalizedDy = ((SIM_HEIGHT - -SIM_HEIGHT) / (1.0 - -1.0)) * (dy - 1.0) + SIM_HEIGHT
 
-           val shipXOrigin = (x / xScale) + xPos
-           val shipYOrigin = (y / yScale) + yPos
            var asteroidXOrigin = x + unnormalizedDx
            if (asteroidXOrigin < 0.0) {
                asteroidXOrigin = 0.0
@@ -535,6 +543,14 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
            val yArray = doubleArrayOf(shipYOrigin, asteroidYOrigin)
            Pair(xArray, yArray)
         }
+
+
+        val shipDirection = Pair(doubleArrayOf(shipXOrigin, shipXOrigin + (directionVector.first * 50) / xScale), doubleArrayOf(shipYOrigin, shipYOrigin + (directionVector.second * 50) / yScale))
+        val shapes = mutableListOf<Pair<DoubleArray, DoubleArray>>()
+        shapes.addAll(asteroidVectors)
+        shapes.add(shipDirection)
+
+        return shapes
     }
 
     // Gets the polygon of the ship

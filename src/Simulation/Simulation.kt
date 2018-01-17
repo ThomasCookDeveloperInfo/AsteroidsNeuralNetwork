@@ -18,8 +18,8 @@ data class Configuration(val simTimeoutSeconds: Double = 90.0,
                          val chunkCount: Int = 3,
                          val maxAsteroids: Int = asteroids + ( asteroids * chunkCount) + (asteroids * chunkCount * maxChunkFactor),
                          val reloadTimeMilliseconds: Double = 333.0,
-                         val dragCoefficient: Double = 0.025,
-                         val rotationalDragCoefficient: Double = 0.1,
+                         val dragCoefficient: Double = 0.04,
+                         val rotationalDragCoefficient: Double = 0.85,
                          val maxVel: Double = 0.1,
                          val maxRotVel: Double = 15.0,
                          val asteroidFitnessWeight: Double = 20.0,
@@ -83,30 +83,32 @@ class Simulation(private val configuration: Configuration) : Ship.Callbacks {
     }
 
     override fun onShipUpdated(bullets: Collection<Bullet>) {
-        val asteroidsToRemove = mutableListOf<Int>()
-        val bulletsToRemove = mutableListOf<Int>()
+        val elementsToRemove = mutableListOf<Pair<Int, Int>>()
 
         bullets.forEachIndexed { bulletIndex, bullet ->
             asteroids.forEachIndexed { asteroidIndex, asteroid ->
-                if (!asteroidsToRemove.contains(asteroidIndex)) {
+                if (elementsToRemove.none { it.first == asteroidIndex || it.second == bulletIndex }) {
                     if (asteroid.collidesWith(bullet)) {
-                        asteroidsToRemove.add(asteroidIndex)
-                        bulletsToRemove.add(bulletIndex)
+                        elementsToRemove.add(Pair(asteroidIndex, bulletIndex))
                     }
                 }
             }
         }
 
-        bulletsToRemove.forEach { bullets.elementAtOrNull(it)?.explode() }
-        asteroidsToRemove.forEach {
-            asteroids.elementAtOrNull(it)?.let {
-                val newSize = it.size + 1
-                if (newSize <= configuration.maxChunkFactor) {
-                    for (newRoid in 0 until configuration.chunkCount) {
-                        asteroids.add(Asteroid(newSize, it))
+        elementsToRemove.forEach {
+            val asteroidOptional = asteroids.elementAtOrNull(it.first)
+            val bulletOptional = bullets.elementAtOrNull(it.second)
+            asteroidOptional?.let { asteroid ->
+                bulletOptional?.let { bullet ->
+                    val newSize = asteroid.size + 1
+                    if (newSize <= configuration.maxChunkFactor) {
+                        for (newRoid in 0 until configuration.chunkCount) {
+                            asteroids.add(Asteroid(newSize, asteroid, bullet))
+                        }
                     }
+                    asteroids.remove(asteroid)
+                    bullet.explode()
                 }
-                asteroids.remove(it)
             }
         }
 
@@ -135,6 +137,10 @@ class Simulation(private val configuration: Configuration) : Ship.Callbacks {
         return ship.getDebugShapes(xScale, xPos, yScale, yPos)
     }
 
+    fun getDebugText() : String {
+        return ship.fitness().toString()
+    }
+
     private fun stop() {
         ship.stop()
         running = false
@@ -146,9 +152,23 @@ const val SIM_HEIGHT = 600.0
 
 class Asteroid(var size: Int = 1) {
 
-    constructor(size: Int, parent: Asteroid) : this(size) {
+    /**
+     * State variables
+     */
+    var x = NonDeterminism.randomAsteroidX(SIM_WIDTH)
+    var y = NonDeterminism.randomAsteroidY(SIM_HEIGHT)
+
+    var vX = (((1.0 - -1.0) / (1.0 - 0.0)) * (NonDeterminism.randomDouble() - 1.0) + 1.0) * size
+    var vY = (((1.0 - -1.0) / (1.0 - 0.0)) * (NonDeterminism.randomDouble() - 1.0) + 1.0) * size
+    private var vRot = NonDeterminism.randomDouble()
+    private var rot = 0.0
+
+    constructor(size: Int, parent: Asteroid, bullet: Bullet) : this(size) {
         x = parent.x
         y = parent.y
+
+        vX = bullet.vX / 3 + NonDeterminism.randomDouble(2.0) * if (NonDeterminism.randomBoolean()) 1 else -1
+        vY = bullet.vY / 3 + NonDeterminism.randomDouble(2.0) * if (NonDeterminism.randomBoolean()) 1 else -1
     }
 
     /**
@@ -158,17 +178,6 @@ class Asteroid(var size: Int = 1) {
             Pair(-30.0 / size, 30.0 / size),
             Pair(30.0 / size, 30.0 / size),
             Pair(30.0 / size,  -30.0 / size))
-
-    /**
-     * State variables
-     */
-    var x = NonDeterminism.randomAsteroidX(SIM_WIDTH)
-    var y = NonDeterminism.randomAsteroidY(SIM_HEIGHT)
-
-    private var vX = (((1.0 - -1.0) / (1.0 - 0.0)) * (NonDeterminism.randomDouble() - 1.0) + 1.0) * size
-    private var vY = (((1.0 - -1.0) / (1.0 - 0.0)) * (NonDeterminism.randomDouble() - 1.0) + 1.0) * size
-    private var vRot = NonDeterminism.randomDouble()
-    private var rot = 0.0
 
     fun collidesWith(bullet: Bullet) : Boolean {
         return bullet.isWithin(this.getPolygon())
@@ -268,6 +277,7 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
     private var asteroidsDestroyed = 0
     private val vectorsToClosestAsteroids = mutableListOf<Pair<Double, Double>>()
     private var directionVector = Pair(0.0, 0.0)
+    private var velocityVector = Pair(0.0, 0.0)
 
     private val survivalTimer: Timeline
     init {
@@ -350,6 +360,7 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
         bullets.clear()
         vectorsToClosestAsteroids.clear()
         directionVector = Pair(0.0, 0.0)
+        velocityVector = Pair(0.0, 0.0)
         secondsElapsedWhenWon = null
         asteroidsDestroyed = 0
         secondsSurvived = 0
@@ -381,12 +392,13 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
             closestAsteroid?.let {
                 val i = if (this.x - it.x > SIM_WIDTH / 2) 1 else if (this.x - it.x < -SIM_WIDTH / 2) -1 else 0
                 val j = if (this.y - it.y > SIM_HEIGHT / 2) 1 else if (this.y - it.y < -SIM_HEIGHT / 2) -1 else 0
-                val dx = it.x + i * SIM_WIDTH - this.x
-                val dy = it.y + j * SIM_HEIGHT - this.y
+                val dx = it.x + it.vX + i * SIM_WIDTH - this.x
+                val dy = it.y + + it.vY + j * SIM_HEIGHT - this.y
                 val normalizedDx = ((1.0 - -1.0) / (SIM_WIDTH - -SIM_WIDTH)) * (dx - SIM_WIDTH) + 1.0
                 val normalizedDy = ((1.0 - -1.0) / (SIM_HEIGHT - -SIM_HEIGHT)) * (dy - SIM_HEIGHT) + 1.0
 
                 vectors.add(Pair(normalizedDx, normalizedDy))
+
                 selectedIndexes.add(closestIndex)
             }
             closestIndex = -1
@@ -416,19 +428,20 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
 
         // Get the ships current direction vector
         directionVector = Pair(dirX, dirY)
+        velocityVector = Pair(vX, vY)
 
-        flattenedVectors.addAll(listOf(directionVector.first, directionVector.second))
+        flattenedVectors.addAll(listOf(directionVector.first, directionVector.second, velocityVector.first, velocityVector.second))
 
         // Get the network outputs
         val networkOutputs = network.update(flattenedVectors.toTypedArray())
 
-        val torque = networkOutputs[0]
-        val thrust = ((1.0 - 0.0) / (1.0 - -1.0)) * (networkOutputs[1] - 1.0) + 1.0
-        val wantsToShoot = networkOutputs[2] > 0
+//        val torque = networkOutputs[0]
+//        val thrust = ((1.0 - 0.0) / (1.0 - -1.0)) * (networkOutputs[1] - 1.0) + 1.0
+//        val wantsToShoot = networkOutputs[2] > 0
 
-//        val torque = if (networkOutputs[0] > 0.33) 1.0 else if (networkOutputs[0] < -0.33) -1.0 else 0.0
-//        val thrust = if (networkOutputs[1] > 0.0) 1.0 else 0.0
-//        val wantsToShoot = networkOutputs[2] > 0.0
+        val torque = if (networkOutputs[0] > 0.0) 1.0 else if (networkOutputs[0] < 0.0) -1.0 else 0.0
+        val thrust = if (networkOutputs[1] > 0.0) 1.0 else 0.0
+        val wantsToShoot = networkOutputs[2] > 0.0
 
         // Apply the outputs
         vRot = Math.max(-configuration.maxRotVel, Math.min(configuration.maxRotVel, vRot + torque)) - configuration.rotationalDragCoefficient * vRot
@@ -546,9 +559,11 @@ class Ship(private val configuration: Configuration) : Bullet.Callbacks {
 
 
         val shipDirection = Pair(doubleArrayOf(shipXOrigin, shipXOrigin + (directionVector.first * 50) / xScale), doubleArrayOf(shipYOrigin, shipYOrigin + (directionVector.second * 50) / yScale))
+        val shipVelocity = Pair(doubleArrayOf(shipXOrigin, shipXOrigin + (velocityVector.first * 50) / xScale), doubleArrayOf(shipYOrigin, shipYOrigin + (velocityVector.second * 50) / yScale))
         val shapes = mutableListOf<Pair<DoubleArray, DoubleArray>>()
         shapes.addAll(asteroidVectors)
         shapes.add(shipDirection)
+        shapes.add(shipVelocity)
 
         return shapes
     }
@@ -591,7 +606,9 @@ class Bullet(private val configuration: Configuration,
              private val shipX: Double, private val shipY: Double,
              private var x: Double = shipX, private var y: Double = shipY,
              private val shipVx: Double, private val shipVy: Double,
-             private val shipRot: Double) {
+             private val shipRot: Double,
+             val vX: Double = shipVx + configuration.bulletVel * -Math.sin(Math.toRadians(shipRot)),
+             val vY: Double = shipVy + configuration.bulletVel * Math.cos(Math.toRadians(shipRot))) {
 
     private val timeoutTimer: Timeline
 
@@ -625,8 +642,8 @@ class Bullet(private val configuration: Configuration,
     }
 
     fun update() {
-        x += shipVx + configuration.bulletVel * -Math.sin(Math.toRadians(shipRot))
-        y += shipVy + configuration.bulletVel * Math.cos(Math.toRadians(shipRot))
+        x += vX
+        y += vY
 
         if (x > WIDTH) x = 0.0
         else if (x < 0) x = WIDTH

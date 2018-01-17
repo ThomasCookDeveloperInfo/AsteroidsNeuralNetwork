@@ -212,6 +212,12 @@ class SimulationController(@FXML private var mainPane: VBox? = null,
                                 debugShapes.forEach { shape ->
                                     strokePolygon(shape.first, shape.second, shape.first.size)
                                 }
+
+                                // Get debug text
+                                val debugText = it.getDebugText()
+
+                                // Draw the debug text
+                                fillText(debugText, xOrigin, yOrigin + simRenderHeight)
                             }
                         }
                     }

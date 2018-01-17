@@ -17,8 +17,8 @@ class Network(private val configuration: Configuration) {
     private val layers = mutableListOf<Layer>()
 
     init {
-        inputCount = configuration.asteroidsToConsider * 2 + 2
-        hiddenCount = inputCount + OUTPUT_COUNT / 2
+        inputCount = configuration.asteroidsToConsider * 2 + 4
+        hiddenCount = (inputCount + OUTPUT_COUNT) / 2
         layers.clear()
         for (layer in 0 until LAYER_COUNT) {
             when (layer) {

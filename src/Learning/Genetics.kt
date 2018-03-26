@@ -3,9 +3,9 @@ package Learning
 import Simulation.Configuration
 import Utilities.NonDeterminism
 
-private const val CROSSOVER_RATE = 1.75
-private const val MUTATION_CHANCE = 0.01
-private const val MAX_PERTURBATION = 0.1
+private const val CROSSOVER_RATE = 1.75f
+private const val MUTATION_CHANCE = 0.01f
+private const val MAX_PERTURBATION = 0.1f
 private const val ELITES = 3
 
 // Functions for performing selection, crossover and mutation of a networks weights
@@ -20,7 +20,7 @@ class Genetics(private val configuration: Configuration = Configuration()) {
     }
 
     // Creates a population member with the passed weights
-    fun addPopulationMember(weights: DoubleArray) {
+    fun addPopulationMember(weights: FloatArray) {
         population.add(NetworkPopulationMember(configuration, weights.toTypedArray()))
     }
 
@@ -32,7 +32,7 @@ class Genetics(private val configuration: Configuration = Configuration()) {
     }
 
     // Starts a new epoch
-    fun epoch() : Collection<DoubleArray> {
+    fun epoch() : Collection<FloatArray> {
         // Sort the current population by fitness
         population.sortByDescending { it.fitness }
 
@@ -63,7 +63,7 @@ class Genetics(private val configuration: Configuration = Configuration()) {
         population.addAll(newPopulation)
 
         // Return a copy of the new population
-        return newPopulation.map { it.network.getCopyOfWeights().toDoubleArray() }
+        return newPopulation.map { it.network.getCopyOfWeights().toFloatArray() }
     }
 
     // Selects a member from the population using roullette method
@@ -100,7 +100,7 @@ class Genetics(private val configuration: Configuration = Configuration()) {
 class NetworkPopulationMember(private val configuration: Configuration, val network: Network = Network(configuration)) {
 
     // Constructor for creating a new member with specified set of weights
-    constructor(configuration: Configuration, weights: Array<Double>) : this(configuration) {
+    constructor(configuration: Configuration, weights: Array<Float>) : this(configuration) {
         network.setWeights(weights)
     }
 
@@ -123,12 +123,12 @@ class NetworkPopulationMember(private val configuration: Configuration, val netw
         val crossoverPoint = NonDeterminism.randomCrossoverPoint(mumWeights.size - 1)
 
         // Create the child A weights array
-        val childWeightsA = mutableListOf<Double>()
+        val childWeightsA = mutableListOf<Float>()
         childWeightsA.addAll(mumWeights.sliceArray(IntRange(0, crossoverPoint)))
         childWeightsA.addAll(dadWeights.sliceArray(IntRange(crossoverPoint, mumWeights.size - 1)))
 
         // Create child B weights array
-        val childWeightsB = mutableListOf<Double>()
+        val childWeightsB = mutableListOf<Float>()
         childWeightsB.addAll(dadWeights.sliceArray(IntRange(0, crossoverPoint)))
         childWeightsB.addAll(mumWeights.sliceArray(IntRange(crossoverPoint, mumWeights.size - 1)))
 

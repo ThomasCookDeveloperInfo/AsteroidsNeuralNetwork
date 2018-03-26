@@ -29,7 +29,7 @@ class Network(private val configuration: Configuration) {
         }
     }
 
-    fun setWeights(weights: Array<Double>) {
+    fun setWeights(weights: Array<Float>) {
         layers.clear()
         for (layer in 0 until LAYER_COUNT) {
             when (layer) {
@@ -63,7 +63,7 @@ class Network(private val configuration: Configuration) {
     }
 
     // Run the network against the inputs and return the outputs
-    fun update(inputs: Array<Double>) : Array<Double> {
+    fun update(inputs: Array<Float>) : Array<Float> {
         var outputs = inputs
         layers.forEach { layer ->
             outputs = layer.activate(outputs)
@@ -72,8 +72,8 @@ class Network(private val configuration: Configuration) {
     }
 
     // Gets the weights of all the layers as a single array
-    fun getCopyOfWeights() : Array<Double> {
-        val weights = mutableListOf<Double>()
+    fun getCopyOfWeights() : Array<Float> {
+        val weights = mutableListOf<Float>()
         layers.forEach { layer ->
             weights.addAll(layer.weights)
         }
@@ -84,23 +84,23 @@ class Network(private val configuration: Configuration) {
     private class Layer(private val configuration: Configuration,
                         private val inputSize: Int,
                         private val outputSize: Int,
-                        var weights: Array<Double> = Array((inputSize * outputSize), { _ ->
+                        var weights: Array<Float> = Array((inputSize * outputSize), { _ ->
                             NonDeterminism.randomNetworkWeight()
                         })) {
 
         // Activate the layer and return the set of outputs
-        fun activate(inputs: Array<Double>) : Array<Double> {
+        fun activate(inputs: Array<Float>) : Array<Float> {
             // Validate the inputs are the correct size
             if (inputs.size >= weights.size)
                 throw IllegalStateException("There are an incorrect number of inputs")
 
             // Create the output array
-            val outputs = Array(outputSize, { _ -> 0.0 })
+            val outputs = Array(outputSize, { _ -> 0f })
 
             // Foreach output, work out the activation
             for (output in 0 until outputs.size) {
                 // Foreach input, multiply by the corresponding weight
-                var netInput = 0.0
+                var netInput = 0f
                 for (input in 0 until inputs.size) {
                     netInput += weights[input * output + 1] * inputs[input]
                 }
@@ -113,8 +113,8 @@ class Network(private val configuration: Configuration) {
         }
 
         // Calculate the sigmoid derivative of the passed input
-        private fun sigmoid(input: Double) : Double = 1 / (1 + Math.exp(-input / configuration.activationResponse))
+        private fun sigmoid(input: Float) : Float = 1f / (1f + Math.exp(-input.toDouble()).toFloat())
         // Calculate the tanh derivative of the passed input
-        private fun tanh(input: Double) : Double = 2 * sigmoid(input * 2) - 1
+        private fun tanh(input: Float) : Float = 2 * sigmoid(input * 2) - 1
     }
 }

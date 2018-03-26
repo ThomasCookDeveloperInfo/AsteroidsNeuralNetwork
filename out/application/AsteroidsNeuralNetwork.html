@@ -1,0 +1,49 @@
+<html>
+    <head>
+        <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <SCRIPT src="https://java.com/js/dtjava.js"></SCRIPT><script>
+    function launchApplication(jnlpfile) {
+        dtjava.launch(            {
+                url : 'AsteroidsNeuralNetwork.jnlp'
+            },
+            {
+                javafx : '9.0.1+'
+            },
+            {}
+        );
+        return false;
+    }
+</script><script>
+    function javafxEmbedAsteroids() {
+        dtjava.embed(
+            {
+                id : 'Asteroids',
+                url : 'AsteroidsNeuralNetwork.jnlp',
+                placeholder : 'javafx-app-placeholder',
+                width : '600',
+                height : '400'
+            },
+            {
+                javafx : '9.0.1+'
+            },
+            {}
+        );
+    }
+    
+            <!-- Embed FX application into web page once page is loaded -->
+    dtjava.addOnloadCallback(javafxEmbedAsteroids);
+</script>
+    </head>
+    <body>
+        <h2>
+            Test page for <b>Asteroids</b>
+        </h2>
+        <b>Webstart:</b><a href="AsteroidsNeuralNetwork.jnlp" onclick="return launchApplication('AsteroidsNeuralNetwork.jnlp');">click to launch this app as webstart</a>
+        <br>
+        <hr>
+        <br>
+        
+        <!-- Applet will be inserted here -->
+        <div id="javafx-app-placeholder"></div>
+    </body>
+</html>

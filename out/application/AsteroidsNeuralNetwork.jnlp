@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?><jnlp spec="1.0" xmlns:jfx="http://javafx.com" href="AsteroidsNeuralNetwork.jnlp">
+    <information>
+        <title>Asteroids</title>
+        <vendor>Unknown</vendor>
+        <description>Asteroids</description>
+        <offline-allowed/>
+    </information>
+    <update check="background"/>
+    <resources>
+        <j2se version="9.0.1+" href="http://java.sun.com/products/autodl/j2se"/>
+        <jar href="AsteroidsNeuralNetwork.jar" size="64337" download="eager"/>
+        <jar href="kotlin-reflect.jar" size="2540183" download="eager"/>
+        <jar href="kotlin-stdlib-jre7.jar" size="2854" download="eager"/>
+        <jar href="kotlin-stdlib-jre8.jar" size="11690" download="eager"/>
+        <jar href="kotlin-stdlib.jar" size="932988" download="eager"/>
+        <jar href="kotlin-test.jar" size="28673" download="eager"/>
+    </resources>
+    <jfx:javafx-desc width="600" height="400" main-class="Asteroids" name="Asteroids"/>
+</jnlp>
+

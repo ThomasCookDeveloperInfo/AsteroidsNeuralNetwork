@@ -126,7 +126,7 @@ class SimulationController(@FXML private var mainPane: VBox? = null,
         simulations.clear()
 
         // Reset all the simulations
-        for (simulation in 0 until SIMULATIONS_TO_RUN) {
+        for (sim in 0 until SIMULATIONS_TO_RUN) {
             val simulation = Simulation(configuration)
             simulation.start()
             simulations.add(simulation)

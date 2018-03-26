@@ -13,8 +13,8 @@ private const val SHIP_SPAWN_BOTTOM = SIM_HEIGHT / 2 + HALF_OF_SIM_HEIGHT
 
 // Thread safe singleton for getting non deterministic data
 object NonDeterminism {
-    fun randomNetworkWeight() : Double = ThreadLocalRandom.current().nextDouble(-1.0, 1.0)
-    fun randomDouble() : Double = ThreadLocalRandom.current().nextDouble()
+    fun randomNetworkWeight() = ((ThreadLocalRandom.current().nextFloat() - 0f) / (1f - 0f)) * (1f - -1f) + -1f
+    fun randomDouble() = ThreadLocalRandom.current().nextDouble()
     fun randomAsteroidX(max: Double) : Double {
         var x = Double.NEGATIVE_INFINITY
         while(x < SHIP_SPAWN_LEFT || x > SHIP_SPAWN_RIGHT) {
@@ -29,7 +29,7 @@ object NonDeterminism {
         }
         return y
     }
-    fun randomDouble(max: Double) : Double = ThreadLocalRandom.current().nextDouble(max)
-    fun randomCrossoverPoint(max: Int) : Int =  ThreadLocalRandom.current().nextInt(max)
-    fun randomBoolean() : Boolean = ThreadLocalRandom.current().nextBoolean()
+    fun randomDouble(max: Double) = ThreadLocalRandom.current().nextDouble(max)
+    fun randomCrossoverPoint(max: Int) =  ThreadLocalRandom.current().nextInt(max)
+    fun randomBoolean() = ThreadLocalRandom.current().nextBoolean()
 }

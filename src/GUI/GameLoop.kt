@@ -11,11 +11,11 @@ private val injector = SimulationInjection
 // However, this is unlikely to occur on anything other than huge simulations on low end hardware
 private const val MAX_ALLOWED_FRAME_TIME_MILLIS = 250L
 
+// The fixed time step of the physics in milliseconds
+private const val dt = 100L
+
 // Track the total time (t) elapsed since start of simulation in milliseconds
 private var t = 0L
-
-// Track the delta time between frame n and n -1 in milliseconds
-private var dt = 100L
 
 // Track the current time since epoch in milliseconds
 // We use this to get the delta between frames
@@ -67,6 +67,9 @@ fun loop() {
         t += dt
 
         // Decumulate the accumulator
+        // When the loop is broken there may be a remainder on this variable
+        // The remaining value will be used outside the loop to calculate
+        // the alpha value to interpolate the render frame with
         accumulator -= dt
     }
 
@@ -92,4 +95,3 @@ interface SimulationState {
     fun integrate(totalTime: Long, deltaTime: Long) : SimulationState
     fun interpolate(alpha: Double, previousState: SimulationState) : SimulationState
 }
-
